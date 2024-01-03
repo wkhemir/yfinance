@@ -222,14 +222,6 @@ class Ticker(TickerBase):
         return self.get_recommendations_summary()
 
     @property
-    def analyst_growth_estimates(self) -> _pd.DataFrame:
-        return self.get_analyst_growth_estimates()
-
-    @property
-    def revenue_forecasts(self) -> _pd.DataFrame:
-        return self.get_rev_forecast()
-
-    @property
     def sustainability(self) -> _pd.DataFrame:
         return self.get_sustainability()
 
@@ -244,28 +236,8 @@ class Ticker(TickerBase):
         return self.get_news()
 
     @property
-    def analyst_trend_details(self) -> _pd.DataFrame:
-        return self.get_trend_details()
-
-    @property
-    def earnings_trend(self) -> _pd.DataFrame:
-        return self.get_earnings_trend()
-
-    @property
-    def rev_est(self) -> _pd.DataFrame:
-        return self.get_rev_forecast()
-
-    @property
-    def eps_est(self) -> _pd.DataFrame:
-        return self.get_earnings_forecast()
-
-    @property
     def earnings_dates(self) -> _pd.DataFrame:
         return self.get_earnings_dates()
-
-    @property
-    def earnings_forecasts(self) -> _pd.DataFrame:
-        return self.get_earnings_forecast()
 
     @property
     def history_metadata(self) -> dict:

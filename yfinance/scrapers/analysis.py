@@ -1,75 +1,104 @@
 import io
 import pandas as pd
+import json
+import numpy as np
 
 from yfinance import utils
 from yfinance.data import YfData
 
 
 class Analysis:
-    _SCRAPE_URL_ = 'https://finance.yahoo.com/quote'
 
     def __init__(self, data: YfData, symbol: str, proxy=None):
         self._data = data
         self._symbol = symbol
         self.proxy = proxy
 
-        self._earnings_trend = pd.DataFrame()
-        self._analyst_trend_details = pd.DataFrame()
-        self._analyst_growth_estimates = pd.DataFrame()
-        self._rev_est = pd.DataFrame()
-        self._eps_est = pd.DataFrame()
+        self._quarterly_eps_history = pd.DataFrame()
+
+        self._quarterly_eps_trend = pd.DataFrame()
+        self._yearly_eps_trend = pd.DataFrame()
+
+        self._quarterly_rev_est = pd.DataFrame()
+        self._yearly_rev_est = pd.DataFrame()
+
+        self._quarterly_eps_est = pd.DataFrame()
+        self._yearly_eps_est = pd.DataFrame()
+        
         self._already_scraped = False
 
     @property
-    def earnings_trend(self) -> pd.DataFrame:
+    def quarterly_eps_history(self) -> pd.DataFrame:
         if not self._already_scraped:
             self._scrape(self.proxy)
-        return self._earnings_trend
+        return self._quarterly_eps_history
 
     @property
-    def analyst_trend_details(self) -> pd.DataFrame:
+    def quarterly_eps_trend(self) -> pd.DataFrame:
         if not self._already_scraped:
             self._scrape(self.proxy)
-        return self._analyst_trend_details
+        return self._quarterly_eps_trend
+    
+    @property
+    def yearly_eps_trend(self) -> pd.DataFrame:
+        if not self._already_scraped:
+            self._scrape(self.proxy)
+        return self._yearly_eps_trend
 
     @property
-    def analyst_growth_estimates(self) -> pd.DataFrame:
+    def quarterly_rev_est(self) -> pd.DataFrame:
         if not self._already_scraped:
             self._scrape(self.proxy)
-        return self._analyst_growth_estimates
+        return self._quarterly_rev_est
+    
+    @property
+    def yearly_rev_est(self) -> pd.DataFrame:
+        if not self._already_scraped:
+            self._scrape(self.proxy)
+        return self._yearly_rev_est
 
     @property
-    def rev_est(self) -> pd.DataFrame:
+    def quarterly_eps_est(self) -> pd.DataFrame:
         if not self._already_scraped:
             self._scrape(self.proxy)
-        return self._rev_est
-
+        return self._quarterly_eps_est
+    
     @property
-    def eps_est(self) -> pd.DataFrame:
+    def yearly_eps_est(self) -> pd.DataFrame:
         if not self._already_scraped:
             self._scrape(self.proxy)
-        return self._eps_est
+        return self._yearly_eps_est
 
     def _scrape(self, proxy):
-        ticker_url = f"{self._SCRAPE_URL_}/{self._symbol}"
-        try:
-            resp = self._data.cache_get(ticker_url + '/analysis', proxy=proxy)
-            analysis = pd.read_html(io.StringIO(resp.text), index_col=0)
-        except Exception:
-            analysis = []
+        url = f'https://query2.finance.yahoo.com/v10/finance/quoteSummary/{self._symbol}?modules=earningsHistory,earningsTrend'
 
-        analysis_dict = {df.index.name: df for df in analysis}
+        json_str = self._data.cache_get(url=url, proxy=proxy).text
+        json_data = json.loads(json_str)
+        data_raw = json_data["quoteSummary"]["result"]
 
-        for key, item in analysis_dict.items():
-            if key == 'Earnings History':
-                self._earnings_trend = item
-            elif key == 'EPS Trend':
-                self._analyst_trend_details = item
-            elif key == 'Growth Estimates':
-                self._analyst_growth_estimates = item
-            elif key == 'Revenue Estimate':
-                self._rev_est = item
-            elif key == 'Earnings Estimate':
-                self._eps_est = item
+        if data_raw is not None:
+            data_raw = data_raw[0]
+
+            index = ('epsActual', 'epsEstimate', 'epsDifference', 'surprisePercent')
+            columns = {pd.Timestamp(d['quarter']['raw'], unit='s'): {i: d[i].get('raw') for i in index} for d in data_raw['earningsHistory']['history'] if d['quarter'].get('raw') is not None}
+            self._quarterly_eps_history = pd.DataFrame(data=columns, index=index).replace(np.nan, None)
+
+            index = ('current', '7daysAgo', '30daysAgo', '60daysAgo', '90daysAgo')
+            columns = {pd.Timestamp(d['endDate']): {i: d['epsTrend'][i].get('raw') for i in index} for d in data_raw['earningsTrend']['trend'] if d['period'] in ('0q', '+1q') and d.get('endDate') is not None}
+            self._quarterly_eps_trend = pd.DataFrame(data=columns, index=index).replace(np.nan, None)
+            columns = {pd.Timestamp(d['endDate']): {i: d['epsTrend'][i].get('raw') for i in index} for d in data_raw['earningsTrend']['trend'] if d['period'] in ('0y', '+1y') and d.get('endDate') is not None}
+            self._yearly_eps_trend = pd.DataFrame(data=columns, index=index).replace(np.nan, None)
+
+            index = ('avg', 'low', 'high', 'yearAgoEps', 'numberOfAnalysts', 'growth')
+            columns = {pd.Timestamp(d['endDate']): {i: d['earningsEstimate'][i].get('raw') for i in index} for d in data_raw['earningsTrend']['trend'] if d['period'] in ('0q', '+1q') and d.get('endDate') is not None}
+            self._quarterly_eps_est = pd.DataFrame(data=columns, index=index).replace(np.nan, None)
+            columns = {pd.Timestamp(d['endDate']): {i: d['earningsEstimate'][i].get('raw') for i in index} for d in data_raw['earningsTrend']['trend'] if d['period'] in ('0y', '+1y') and d.get('endDate') is not None}
+            self._yearly_eps_est = pd.DataFrame(data=columns, index=index).replace(np.nan, None)
+
+            index = ('avg', 'low', 'high', 'numberOfAnalysts', 'yearAgoRevenue', 'growth')
+            columns = {pd.Timestamp(d['endDate']): {i: d['revenueEstimate'][i].get('raw') for i in index} for d in data_raw['earningsTrend']['trend'] if d['period'] in ('0q', '+1q') and d.get('endDate') is not None}
+            self._quarterly_rev_est = pd.DataFrame(data=columns, index=index).replace(np.nan, None)
+            columns = {pd.Timestamp(d['endDate']): {i: d['revenueEstimate'][i].get('raw') for i in index} for d in data_raw['earningsTrend']['trend'] if d['period'] in ('0y', '+1y') and d.get('endDate') is not None}
+            self._yearly_rev_est = pd.DataFrame(data=columns, index=index).replace(np.nan, None)
 
         self._already_scraped = True

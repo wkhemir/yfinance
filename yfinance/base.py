@@ -1760,44 +1760,39 @@ class TickerBase:
             return data.to_dict()
         return data
 
-    def get_analyst_growth_estimates(self, proxy=None, as_dict=False):
+    def get_analysis_quarterly_eps_history(self, proxy=None, as_dict=False):
         self._analysis.proxy = proxy
-        data = self._analysis.analyst_growth_estimates
+        data = self._analysis.quarterly_eps_history
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_earnings_trend(self, proxy=None, as_dict=False):
+    def get_analysis_rev_estimate(self, proxy=None, as_dict=False, freq='yearly'):
         self._analysis.proxy = proxy
-        data = self._analysis.earnings_trend
+        if freq == 'yearly':
+            data = self._analysis.yearly_rev_est
+        else:
+            data = self._analysis.quarterly_rev_est
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_rev_forecast(self, proxy=None, as_dict=False):
+    def get_analysis_eps_estimate(self, proxy=None, as_dict=False, freq='yearly'):
         self._analysis.proxy = proxy
-        data = self._analysis.rev_est
+        if freq == 'yearly':
+            data = self._analysis.yearly_eps_est
+        else:
+            data = self._analysis.quarterly_eps_est
         if as_dict:
             return data.to_dict()
         return data
 
-    def get_earnings_forecast(self, proxy=None, as_dict=False):
+    def get_analysis_eps_trend(self, proxy=None, as_dict=False, freq='yearly'):
         self._analysis.proxy = proxy
-        data = self._analysis.eps_est
-        if as_dict:
-            return data.to_dict()
-        return data
-
-    def get_trend_details(self, proxy=None, as_dict=False):
-        self._analysis.proxy = proxy
-        data = self._analysis.analyst_trend_details
-        if as_dict:
-            return data.to_dict()
-        return data
-
-    def get_earnings_trend(self, proxy=None, as_dict=False):
-        self._analysis.proxy = proxy
-        data = self._analysis.earnings_trend
+        if freq == 'yearly':
+            data = self._analysis.yearly_eps_trend
+        else:
+            data = self._analysis.quarterly_eps_trend
         if as_dict:
             return data.to_dict()
         return data
